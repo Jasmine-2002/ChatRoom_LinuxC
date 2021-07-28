@@ -159,7 +159,7 @@ int main(void) {
             if(events[i].data.fd == sockfd)
             {
                 confd = Accept(sockfd, (struct sockaddr *)&clientaddr, &addrlen);
-                printf("Connected: %s, fd is %d\n",inet_ntoa(clientaddr.sin_addr), confd);
+                printf("Connected client IP: %s, fd: %d\n",inet_ntoa(clientaddr.sin_addr), confd);
                 ev.data.fd = confd;               //设置与要处理事件相关的文件描述符
                 ev.events = EPOLLIN ;                //设置要处理的事件类型
                 epoll_ctl(epfd, EPOLL_CTL_ADD, confd, &ev);   //注册epoll事件
@@ -203,7 +203,6 @@ int main(void) {
                 recv_t.data.recv_fd = events[i].data.fd;
  			    recv_pack = (PACK*)malloc(sizeof(PACK));
  			    memcpy(recv_pack, &recv_t, sizeof(PACK));
- 			    //pthread_create(&pid, NULL, Menu, (void*)recv_pack);
                 Menu((void*)recv_pack);
             }
         }
@@ -322,7 +321,6 @@ Recordinfo *RC_read()
 //处理函数
 void *Menu(void *recv_pack_t)
 {
-    //pthread_detach(pthread_self());
     PACK *recv_pack;
     recv_pack = (PACK *)recv_pack_t;
     switch(recv_pack->type)
@@ -440,8 +438,7 @@ void Exit(PACK *recv_pack)
 //注册
 void registe(PACK *recv_pack)
 {
-    char query_str[1000];
-
+    char query[1000];
     int a;
     char ch[5];
     int fd;
@@ -467,9 +464,9 @@ void registe(PACK *recv_pack)
         strcpy(pNew->passwd, recv_pack->data.mes);
         pNew->statu_s = OFFLINE;
         Insert(pNew);
-        memset(query_str, 0, strlen(query_str));
-        sprintf(query_str, "insert into user_data values('%s', '%s')", recv_pack->data.send_name, recv_pack->data.mes);
-        mysql_real_query(&mysql, query_str, strlen(query_str));
+        memset(query, 0, strlen(query));
+        sprintf(query, "insert into user_data values('%s', '%s')", recv_pack->data.send_name, recv_pack->data.mes);
+        mysql_real_query(&mysql, query, strlen(query));
         ch[0] = '1';
     }
     else//重名
@@ -581,16 +578,16 @@ void check_fri(PACK *recv_pack)
     int flag = CHECK_FRI;
     MYSQL_RES *res = NULL;
     MYSQL_ROW row;
-    char query_str[700];
+    char query[700];
     int rows;
     int i;
 
     int fd = recv_pack->data.send_fd;
     int statu_s;
 
-    memset(query_str, 0, strlen(query_str));
-    sprintf(query_str, "select * from friends where name1='%s' or name2='%s'", recv_pack->data.send_name, recv_pack->data.send_name);
-    mysql_real_query(&mysql, query_str, strlen(query_str));
+    memset(query, 0, strlen(query));
+    sprintf(query, "select * from friends where name1='%s' or name2='%s'", recv_pack->data.send_name, recv_pack->data.send_name);
+    mysql_real_query(&mysql, query, strlen(query));
     
     res = mysql_store_result(&mysql);
     
@@ -631,12 +628,12 @@ void get_fri_sta(PACK *recv_pack)
     int fd = recv_pack->data.send_fd;
 
     User *t = pHead;
-    int flag_2 = 0;
+    int flag2 = 0;
     while(t)
     {
         if(strcmp(t->name, recv_pack->data.send_name) == 0)
         {
-            flag_2 = 1;
+            flag2 = 1;
             break;
         }
         t = t->next;
@@ -654,8 +651,7 @@ void get_fri_sta(PACK *recv_pack)
 //添加好友
 void add_fri(PACK *recv_pack)
 {
-    char query_str[1700];
-
+    char query[1700];
     int flag = ADD_FRI;
     int fd = recv_pack->data.send_fd;
     char ch[5];
@@ -721,9 +717,9 @@ void add_fri(PACK *recv_pack)
                     printf("add----\n");
                     Insert_R(pNew);
 
-                    memset(query_str, 0, strlen(query_str));
-                    sprintf(query_str, "insert into friends values('%s', '%s', %d)", recv_pack->data.recv_name, recv_pack->data.send_name, FRIEND);
-                    mysql_real_query(&mysql, query_str, strlen(query_str));
+                    memset(query, 0, strlen(query));
+                    sprintf(query, "insert into friends values('%s', '%s', %d)", recv_pack->data.recv_name, recv_pack->data.send_name, FRIEND);
+                    mysql_real_query(&mysql, query, strlen(query));
                 }
                 else if(recv_pack->data.mes[0] == 'n')
                     ch[0] = '2';
@@ -762,33 +758,32 @@ void Insert_R(Relation *pNew)
 //删除好友
 void del_fri(PACK *recv_pack)
 {
-    char query_str[1700];
-
+    char query[1700];
     int flag = DEL_FRI;
     char ch[5];
     int fd = recv_pack->data.send_fd;
 
     Relation *q = pStart;
-    int flag_3 = 0;
+    int flag3 = 0;
     while(q)
     {
         if((strcmp(q->name1, recv_pack->data.mes) == 0 && strcmp(q->name2, recv_pack->data.send_name) == 0) || (strcmp(q->name1, recv_pack->data.send_name) == 0 && strcmp(q->name2, recv_pack->data.mes) == 0))
         {
-            flag_3 = 1;
+            flag3 = 1;
             break;
         }
         q = q->next;
     }
 
-    if(flag_3 == 0)//不是好友
+    if(flag3 == 0)//不是好友
         ch[0] = '0';
     else
     {
         Delete_R(q);
 
-        memset(query_str, 0, strlen(query_str));
-        sprintf(query_str, "delete from friends where (name1='%s' and name2='%s') or (name1='%s' and name2='%s')", recv_pack->data.send_name, recv_pack->data.mes, recv_pack->data.mes, recv_pack->data.send_name);
-        mysql_real_query(&mysql, query_str, strlen(query_str));
+        memset(query, 0, strlen(query));
+        sprintf(query, "delete from friends where (name1='%s' and name2='%s') or (name1='%s' and name2='%s')", recv_pack->data.send_name, recv_pack->data.mes, recv_pack->data.mes, recv_pack->data.send_name);
+        mysql_real_query(&mysql, query, strlen(query));
         ch[0] = '1';
     }
     send_more(fd, flag, recv_pack, ch);
@@ -821,32 +816,31 @@ void Delete_R(Relation *pNew)
 //屏蔽好友
 void shi_fri(PACK *recv_pack)
 {
-    char query_str[1700];
-
+    char query[1700];
     int flag = SHI_FRI;
     char ch[5];
     int fd = recv_pack->data.send_fd;
 
     Relation *q = pStart;
-    int flag_3 = 0;
+    int flag3 = 0;
     while(q)
     {
         if((strcmp(q->name1, recv_pack->data.mes) == 0 && strcmp(q->name2, recv_pack->data.send_name) == 0) || (strcmp(q->name1, recv_pack->data.send_name) == 0 && strcmp(q->name2, recv_pack->data.mes) == 0))
         {
-            flag_3 = 1;
+            flag3 = 1;
             break;
         }
         q = q->next;
     }
 
-    if(flag_3 == 0)
+    if(flag3 == 0)
         ch[0] = '0';
     else
     {
         q->statu_s = FRI_BLK;
-        memset(query_str, 0, strlen(query_str));
-        sprintf(query_str, "update friends set status=%d where (name1='%s' and name2='%s') or (name1='%s' and name2='%s')", FRI_BLK, recv_pack->data.send_name, recv_pack->data.mes, recv_pack->data.mes, recv_pack->data.send_name);
-        mysql_real_query(&mysql, query_str, strlen(query_str));
+        memset(query, 0, strlen(query));
+        sprintf(query, "update friends set status=%d where (name1='%s' and name2='%s') or (name1='%s' and name2='%s')", FRI_BLK, recv_pack->data.send_name, recv_pack->data.mes, recv_pack->data.mes, recv_pack->data.send_name);
+        mysql_real_query(&mysql, query, strlen(query));
         ch[0] = '1';
     }
     send_more(fd, flag, recv_pack, ch);
@@ -856,26 +850,26 @@ void shi_fri(PACK *recv_pack)
 //创建群
 void cre_grp(PACK *recv_pack)
 {
-    char query_str[1000];
+    char query[1000];
 
     int flag = CRE_GRP;
     int fd = recv_pack->data.send_fd;
     char ch[5];
 
     Relation *q = pStart;
-    int flag_3 = 0;
+    int flag3 = 0;
     Relation *pNew = (Relation *)malloc(sizeof(Relation));
     while(q)
     {
         if(strcmp(q->name2, recv_pack->data.mes) == 0)
         {
-            flag_3 = 1;
+            flag3 = 1;
             break;
         }
         q = q->next;
     }
 
-    if(flag_3 == 1)
+    if(flag3 == 1)
     {
         ch[0] = '0';
     }
@@ -887,9 +881,9 @@ void cre_grp(PACK *recv_pack)
         pNew->statu_s = GRP_OWN;
         Insert_R(pNew);
         
-        memset(query_str, 0, strlen(query_str));
-        sprintf(query_str, "insert into friends values('%s', '%s', %d)", recv_pack->data.send_name, recv_pack->data.mes, GRP_OWN);
-        mysql_real_query(&mysql, query_str, strlen(query_str));
+        memset(query, 0, strlen(query));
+        sprintf(query, "insert into friends values('%s', '%s', %d)", recv_pack->data.send_name, recv_pack->data.mes, GRP_OWN);
+        mysql_real_query(&mysql, query, strlen(query));
     }
     send_more(fd, flag, recv_pack, ch);
 }
@@ -973,27 +967,23 @@ void add_grp(PACK *recv_pack)
                 ch[0] = '1';
                 fd = t->fd;
                 strcpy(recv_pack->file.mes, recv_pack->data.mes);
-                //break;
                 send_more(fd, flag, recv_pack, ch);
                 return;
             }
             else if(strcmp(recv_pack->data.recv_name, t->name) == 0 && (t->statu_s == OFFLINE))
             {
-                //printf("offline add group\n");
                 memcpy(&Mex_Box[sign++], recv_pack, sizeof(PACK));
                 break;
             } 
             t = t->next;
         }
     }
-    //send_more(fd, flag, recv_pack, ch);
 }
 
 //退群
 void out_grp(PACK *recv_pack)
 {
-    char query_str[1000];
-
+    char query[1000];
     int flag = OUT_GRP;
     char ch[5];
     int fd = recv_pack->data.send_fd;
@@ -1017,9 +1007,9 @@ void out_grp(PACK *recv_pack)
         ch[0] = '1';
         Delete_R(q);
 
-        memset(query_str, 0, strlen(query_str));
-        sprintf(query_str, "delete from friends where name1='%s' and name2='%s'", recv_pack->data.send_name, recv_pack->data.mes);
-        mysql_real_query(&mysql, query_str, strlen(query_str));
+        memset(query, 0, strlen(query));
+        sprintf(query, "delete from friends where name1='%s' and name2='%s'", recv_pack->data.send_name, recv_pack->data.mes);
+        mysql_real_query(&mysql, query, strlen(query));
     }
     send_more(fd, flag, recv_pack, ch);
 }
@@ -1027,20 +1017,19 @@ void out_grp(PACK *recv_pack)
 //解散群
 void del_grp(PACK *recv_pack)
 {
-    char query_str[1000];
-
+    char query[1000];
     int flag = DEL_GRP;
     char ch[5];
     int fd = recv_pack->data.send_fd;
 
     Relation *q = pStart;
-    int flag_3 = 0;
-    int flag_3_3 = 0;
+    int flag3 = 0;
+    int flag2 = 0;
     while(q)
     {
         if(strcmp(q->name2, recv_pack->data.mes) == 0)
         {
-            flag_3_3 = 1;
+            flag2 = 1;
             break;
         }
         q = q->next;
@@ -1051,15 +1040,15 @@ void del_grp(PACK *recv_pack)
     {
         if(strcmp(q->name1, recv_pack->data.send_name) == 0 && strcmp(q->name2, recv_pack->data.mes) == 0 && (q->statu_s == GRP_OWN))
         {
-            flag_3 = 1;
+            flag3 = 1;
             break;
         }
         q = q->next;
     }
 
-    if(flag_3_3 == 0)
+    if(flag2 == 0)
         ch[0] = '0';
-    else if(flag_3 == 1 && flag_3_3 == 1)
+    else if(flag3 == 1 && flag2 == 1)
     {
         ch[0] = '1';
         q = pStart;
@@ -1069,11 +1058,11 @@ void del_grp(PACK *recv_pack)
                 Delete_R(q);
             q = q->next;
         }
-        memset(query_str, 0, strlen(query_str));
-        sprintf(query_str, "delete from friends where name2='%s'", recv_pack->data.mes);
-        mysql_real_query(&mysql, query_str, strlen(query_str));
+        memset(query, 0, strlen(query));
+        sprintf(query, "delete from friends where name2='%s'", recv_pack->data.mes);
+        mysql_real_query(&mysql, query, strlen(query));
     }
-    else if(flag_3 == 0 && flag_3_3 == 1)
+    else if(flag3 == 0 && flag2 == 1)
         ch[0] = '2';
     send_more(fd, flag, recv_pack, ch);
 }
@@ -1089,14 +1078,14 @@ void set_grp_adm(PACK *recv_pack)
     int fd2;
     User *t = pHead;
     Relation *q = pStart;
-    int flag_3 = 0;
-    int flag_3_3 = 0;
-    int flag_3_3_3 = 0;
+    int flag3 = 0;
+    int flag2 = 0;
+    int flag1 = 0;
     while(q)
     {
         if(strcmp(q->name2, recv_pack->data.recv_name) == 0)
         {
-            flag_3_3 = 1;
+            flag2 = 1;
             break;
         }
         q = q->next;
@@ -1107,7 +1096,7 @@ void set_grp_adm(PACK *recv_pack)
     {
         if(strcmp(q->name2, recv_pack->data.recv_name) == 0 && strcmp(q->name1, recv_pack->data.mes) == 0)
         {
-            flag_3_3_3 = 1;
+            flag1 = 1;
             break;
         }
         q = q->next;
@@ -1118,13 +1107,13 @@ void set_grp_adm(PACK *recv_pack)
     {
         if(strcmp(q->name1, recv_pack->data.send_name) == 0 && strcmp(q->name2, recv_pack->data.recv_name) == 0 && q->statu_s == GRP_OWN)
         {
-            flag_3 = 1;
+            flag3 = 1;
             break;
         }
         q = q->next;
     }
 
-    if(flag_3 == 1 && flag_3_3 == 1 && flag_3_3_3 == 1)
+    if(flag3 == 1 && flag2 == 1 && flag1 == 1)
     {
         ch[0] = '1';
         q = pStart;
@@ -1154,11 +1143,11 @@ void set_grp_adm(PACK *recv_pack)
         sprintf(query_str, "update friends set status=%d where name1='%s' and name2='%s'", GRP_ADM, recv_pack->data.mes, recv_pack->data.recv_name);
         mysql_real_query(&mysql, query_str, strlen(query_str));
     }
-    else if(flag_3 == 0 && flag_3_3 == 1 && flag_3_3_3 == 1)
+    else if(flag3 == 0 && flag2 == 1 && flag1 == 1)
         ch[0] = '2';
-    else if(flag_3_3_3 == 0)
+    else if(flag1 == 0)
         ch[0] = '3';
-    else if(flag_3_3 == 0)
+    else if(flag2 == 0)
         ch[0] = '0';
     send_more(fd, flag, recv_pack, ch);
 }
@@ -1174,15 +1163,15 @@ void kick_grp(PACK *recv_pack)
     int fd2;
     User *t = pHead;
     Relation *q = pStart;
-    int flag_3 = 0;
-    int flag_3_3 = 0;
-    int flag_3_3_3 = 0;
-    int flag_3_3_3_3 = 0;
+    int flag3 = 0;
+    int flag1 = 0;
+    int flag2 = 0;
+    int flag4 = 0;
     while(q)
     {
         if(strcmp(q->name2, recv_pack->data.recv_name) == 0)
         {
-            flag_3_3 = 1;
+            flag1 = 1;
             break;
         }
         q = q->next;
@@ -1193,7 +1182,7 @@ void kick_grp(PACK *recv_pack)
     {
         if(strcmp(q->name2, recv_pack->data.recv_name) == 0 && strcmp(q->name1, recv_pack->data.mes) == 0)
         {
-            flag_3_3_3 = 1;
+            flag2 = 1;
             break;
         }
         q = q->next;
@@ -1204,7 +1193,7 @@ void kick_grp(PACK *recv_pack)
     {
         if(strcmp(q->name1, recv_pack->data.send_name) == 0 && strcmp(q->name2, recv_pack->data.recv_name) == 0 && (q->statu_s == GRP_OWN || q->statu_s == GRP_ADM))
         {
-            flag_3 = 1;
+            flag3 = 1;
             break;
         }
         q = q->next;
@@ -1215,13 +1204,13 @@ void kick_grp(PACK *recv_pack)
     {
         if(strcmp(q->name1, recv_pack->data.mes) == 0 && (q->statu_s == GRP))
         {
-            flag_3_3_3_3 = 1;
+            flag4 = 1;
             break;
         }
         q = q->next;
     }
 
-    if(flag_3 == 1 && flag_3_3 == 1 && flag_3_3_3 == 1 && flag_3_3_3_3 == 1)
+    if(flag3 == 1 && flag1 == 1 && flag2 == 1 && flag4 == 1)
     {
         ch[0] = '1';
         Delete_R(q);
@@ -1242,13 +1231,13 @@ void kick_grp(PACK *recv_pack)
         sprintf(query_str, "delete from friends where name1='%s' and name2='%s'", recv_pack->data.mes, recv_pack->data.recv_name);
         mysql_real_query(&mysql, query_str, strlen(query_str));
     }
-    else if(flag_3 == 0 && flag_3_3 == 1 && flag_3_3_3 == 1 && flag_3_3_3_3 == 1)
+    else if(flag3 == 0 && flag1 == 1 && flag2 == 1 && flag4 == 1)
         ch[0] = '2';
-    else if(flag_3_3_3_3 == 0)
+    else if(flag4 == 0)
         ch[0] = '4';
-    else if(flag_3_3_3 == 0)
+    else if(flag2 == 0)
         ch[0] = '3';
-    else if(flag_3_3 == 0)
+    else if(flag1 == 0)
         ch[0] = '0';
     send_more(fd, flag, recv_pack, ch);
 }
@@ -1270,15 +1259,6 @@ void check_grp(PACK *recv_pack)
         }
         q = q->next;
     }
-    /*
-    printf("%d\n", i);
-    q = pStart;
-    while(q)
-    {
-        printf("%s\t%s\t%d\n", q->name1, q->name2, q->statu_s);
-        q = q->next;
-    }
-    */
     recv_pack->grp_info.grp_num = i;
 
     send_more(fd, flag, recv_pack, "");
@@ -1318,7 +1298,7 @@ void chat_one(PACK *recv_pack)
     
     MYSQL_RES *res = NULL;
     MYSQL_ROW row;
-    char query_str[1500];
+    char query[1500];
     int rows;
     int fields;
     RECORD_INFO rec_info[55];
@@ -1327,8 +1307,8 @@ void chat_one(PACK *recv_pack)
     User *t = pHead;
     Relation *q = pStart;
     Recordinfo *p = pRec;
-    int flag_2 = 0;
-    int flag_2_2 = 0;
+    int flag2 = 0;
+    int flag3 = 0;
 
     Recordinfo *pNew = (Recordinfo *)malloc(sizeof(Recordinfo));
 
@@ -1348,7 +1328,7 @@ void chat_one(PACK *recv_pack)
         }
     }
 
-    while(q)
+    while(q)//不是好友
     {
         if(((strcmp(q->name1,recv_pack->data.send_name) == 0 && strcmp(q->name2, recv_pack->data.recv_name) == 0) || (strcmp(q->name2,recv_pack->data.send_name) == 0 && strcmp(q->name1, recv_pack->data.recv_name) == 0)) && (q->statu_s == FRI_BLK))
         {
@@ -1366,13 +1346,13 @@ void chat_one(PACK *recv_pack)
     {
         if(strcmp(t->name, recv_pack->data.recv_name) == 0)
         {
-            flag_2 = 1;
+            flag2 = 1;
             break;
         }
         t = t->next;
     }
 
-    if(flag_2 == 0)
+    if(flag2 == 0)//用户不存在
     {
         ch[0] = '0';
         send_more(fd, flag, recv_pack, ch);
@@ -1384,9 +1364,9 @@ void chat_one(PACK *recv_pack)
     {
         if(recv_pack->data.mes[0] == '1')
         {
-            memset(query_str, 0, strlen(query_str));
-            sprintf(query_str, "select * from off_records where name1='%s' and name2='%s'", recv_pack->data.recv_name, recv_pack->data.send_name);
-            mysql_real_query(&mysql, query_str, strlen(query_str));
+            memset(query, 0, strlen(query));
+            sprintf(query, "select * from off_records where name1='%s' and name2='%s'", recv_pack->data.recv_name, recv_pack->data.send_name);
+            mysql_real_query(&mysql, query, strlen(query));
             res = mysql_store_result(&mysql);
             rows = mysql_num_rows(res);
             fields = mysql_num_fields(res);
@@ -1396,9 +1376,9 @@ void chat_one(PACK *recv_pack)
                 strcpy(pNew->name2, row[1]);
                 strcpy(pNew->message, row[2]);
                 Insert_RC(pNew);
-                memset(query_str, 0, strlen(query_str));
-                sprintf(query_str, "insert into records values('%s', '%s', '%s')", row[0], row[1], row[2]);
-                mysql_real_query(&mysql, query_str, strlen(query_str));
+                memset(query, 0, strlen(query));
+                sprintf(query, "insert into records values('%s', '%s', '%s')", row[0], row[1], row[2]);
+                mysql_real_query(&mysql, query, strlen(query));
                 
                 strcpy(recv_pack->rec_info[i].name1, row[0]);
                 strcpy(recv_pack->rec_info[i].name2, row[1]);
@@ -1410,9 +1390,9 @@ void chat_one(PACK *recv_pack)
             recv_pack->rec_info[i].message[0] = '0';
             send_more(fd, flag, recv_pack, "6");
 
-            memset(query_str, 0, strlen(query_str));
-            sprintf(query_str, "delete from off_records where name1='%s' and name2='%s'", recv_pack->data.recv_name, recv_pack->data.send_name);
-            mysql_real_query(&mysql, query_str, strlen(query_str));
+            memset(query, 0, strlen(query));
+            sprintf(query, "delete from off_records where name1='%s' and name2='%s'", recv_pack->data.recv_name, recv_pack->data.send_name);
+            mysql_real_query(&mysql, query, strlen(query));
             
             t = pHead;
             while(t)
@@ -1430,12 +1410,12 @@ void chat_one(PACK *recv_pack)
             {
                 if(strcmp(t->name, recv_pack->data.recv_name) == 0 && (t->statu_s != OFFLINE))
                 {
-                    flag_2_2 = 1;
+                    flag3 = 1;
                     break;
                 }
                 t = t->next;
             }
-            if(flag_2_2 == 1)
+            if(flag3 == 1)
             {
                 ch[0] = '1';
                 fd = t->fd;
@@ -1464,9 +1444,9 @@ void chat_one(PACK *recv_pack)
                     strcpy(pNew->message, recv_pack->data.mes);
                     Insert_RC(pNew);
 
-                    memset(query_str, 0, strlen(query_str));
-                    sprintf(query_str, "insert into records values('%s', '%s', '%s')", recv_pack->data.send_name, recv_pack->data.recv_name, recv_pack->data.mes);
-                    mysql_real_query(&mysql, query_str, strlen(query_str));
+                    memset(query, 0, strlen(query));
+                    sprintf(query, "insert into records values('%s', '%s', '%s')", recv_pack->data.send_name, recv_pack->data.recv_name, recv_pack->data.mes);
+                    mysql_real_query(&mysql, query, strlen(query));
                     
                     memset(ss, 0, MAX_CHAR);
                     strcpy(ss,recv_pack->data.recv_name);
@@ -1481,9 +1461,9 @@ void chat_one(PACK *recv_pack)
                 }
                 else if(strcmp(t->name, recv_pack->data.recv_name) == 0 && strcmp(t->chat, recv_pack->data.send_name) != 0)
                 {
-                    memset(query_str, 0, strlen(query_str));
-                    sprintf(query_str, "insert into off_records values('%s', '%s', '%s')", recv_pack->data.send_name, recv_pack->data.recv_name, recv_pack->data.mes);
-                    mysql_real_query(&mysql, query_str, strlen(query_str));
+                    memset(query, 0, strlen(query));
+                    sprintf(query, "insert into off_records values('%s', '%s', '%s')", recv_pack->data.send_name, recv_pack->data.recv_name, recv_pack->data.mes);
+                    mysql_real_query(&mysql, query, strlen(query));
                     free(pNew);
                     pNew = NULL;
                     return;
