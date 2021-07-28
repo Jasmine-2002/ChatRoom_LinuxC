@@ -154,9 +154,9 @@ void *get_back()
         case GET_FRI_STA:
             flag = recv_pack.data.mes[0] - '0';
             if(flag == 0)
-                printf("%s---offline\n",recv_pack.data.recv_name);
+                printf("%s---离线\n",recv_pack.data.recv_name);
             else if(flag == 1)
-                printf("%s---online\n",recv_pack.data.recv_name);
+                printf("%s---在线\n",recv_pack.data.recv_name);
             
             pthread_cond_signal(&cond);
             break;
@@ -542,7 +542,7 @@ int login()
         }
     }while(login_passwd[i]!='\n'&&i<18);
     login_passwd[i]='\0';
-
+	
     system("clear");
     send_pack(flag, login_name, "server", login_passwd);
     if(recv(confd, &recv_login, sizeof(PACK), 0) < 0)
@@ -623,7 +623,7 @@ void Menu_friends()
     do
     {
         printf("---------------------------\n");
-        printf("|\t1.查看好友列表   |\n");
+        printf("|\t1.查看好友列表    |\n");
         printf("---------------------------\n");
         printf("|\t2.添加好友\t  |\n");
         printf("---------------------------\n");
@@ -854,7 +854,7 @@ void check_mem_grp()
         if(strcmp(grp_info.groups[i], mes) == 0)
             break;
     }
-    if(i >= grp_info.grp_num)
+    if(i > grp_info.grp_num)
         printf("你没有加入此群!\n");
     else
     {
