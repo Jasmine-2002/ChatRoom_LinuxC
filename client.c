@@ -498,7 +498,6 @@ void registe()
 
     
     send_pack(flag, registe_name, "server", registe_passwd);
-    printf("-=-=-=-=-=-=-=-=-=\n");
     if(recv(confd, &recv_registe, sizeof(PACK), 0) < 0)
         my_err("recv", __LINE__);
     recv_registe_flag = recv_registe.data.mes[0] - '0';
@@ -571,7 +570,7 @@ void Menu()
     int flag;
     do
     {
-        printf("--------------------------------\n");
+        printf("---------------------------------\n");
         printf("|\t   1.好友管理   \t|\n");
         printf("---------------------------------\n");
         printf("|\t   2.群管理      \t|\n");
@@ -582,7 +581,7 @@ void Menu()
         printf("---------------------------------\n");
         printf("|\t   5.通知中心   \t|\n");
         printf("---------------------------------\n");
-        printf("|\t   0.注销         \t|\n");
+        printf("|\t   0.退出         \t|\n");
         printf("---------------------------------\n");
         printf("请选择：");
         scanf("%d",&choice);
@@ -624,7 +623,7 @@ void Menu_friends()
     do
     {
         printf("---------------------------\n");
-        printf("|\t1.查看好友列表  \t|\n");
+        printf("|\t1.查看好友列表   |\n");
         printf("---------------------------\n");
         printf("|\t2.添加好友\t  |\n");
         printf("---------------------------\n");
@@ -673,7 +672,7 @@ void check_fri()
     pthread_mutex_lock(&mutex);
     send_pack(flag, user, "server", "1");
     pthread_cond_wait(&cond, &mutex);
-    printf("\n***********friends***********\n");
+    printf("\n-----------好友列表-----------\n");
     if(fri_info.friends_num == 0)
         printf("暂无好友!\n");
     else
@@ -687,7 +686,7 @@ void check_fri()
                 pthread_cond_wait(&cond, &mutex);
             }
             else if(fri_info.friends_status[i] == 2)
-                printf("%s---blacklist\n",fri_info.friends[i]);
+                printf("%s---黑名单\n",fri_info.friends[i]);
         }
     }
     pthread_mutex_unlock(&mutex);
@@ -700,7 +699,7 @@ void add_fri()
     int flag = ADD_FRI;
     pthread_mutex_lock(&mutex);
     char friend_add[MAX_CHAR];
-    printf("你想要添加的好友名称：");
+    printf("你想要添加的用户名：");
     scanf("%s",friend_add);
     send_pack(flag, user, friend_add, "0");
     pthread_mutex_unlock(&mutex);
@@ -712,7 +711,7 @@ void del_fri()
     int flag = DEL_FRI;
     char friend_del[MAX_CHAR];
     pthread_mutex_lock(&mutex);
-    printf("你想要删除的好友名称：");
+    printf("你想要删除的用户名：");
     scanf("%s",friend_del);
     send_pack(flag, user, "server", friend_del);
     pthread_cond_wait(&cond, &mutex);
@@ -725,7 +724,7 @@ void shi_fri()
     int flag = SHI_FRI;
     char friend_shi[MAX_CHAR];
     pthread_mutex_lock(&mutex);
-    printf("你想要屏蔽的好友名称：");
+    printf("你想要屏蔽的用户名：");
     scanf("%s",friend_shi);
     send_pack(flag, user, "server", friend_shi);
     pthread_cond_wait(&cond, &mutex);
@@ -827,7 +826,7 @@ void check_grp()
     pthread_mutex_lock(&mutex);
     send_pack(flag, user, "server", mes);
     pthread_cond_wait(&cond, &mutex);
-    printf("\n***********groups***********\n");
+    printf("\n-----------群聊列表-----------\n");
     if(grp_info.grp_num == 0)
         printf("暂无加入群聊!\n");
     else
@@ -862,7 +861,7 @@ void check_mem_grp()
         memset(&fri_info, 0, sizeof(fri_info));
         send_pack(flag, user, "server", mes);
         pthread_cond_wait(&cond, &mutex);
-        printf("\n***********%s***********\n",mes);
+        printf("\n-----------%s-----------\n",mes);
         if(fri_info.friends_num == 0)
             printf("该群中暂无成员!\n");
         else
@@ -970,7 +969,7 @@ void set_grp_adm()
     char grp_set_1[MAX_CHAR];
     char grp_set_2[MAX_CHAR];
     pthread_mutex_lock(&mutex);
-    printf("你想要在那个群设置谁为管理员：");
+    printf("你想要在那个群中设置谁为管理员：");
     scanf("%s",grp_set_1);
     scanf("%s",grp_set_2);
     send_pack(flag, user, grp_set_1, grp_set_2);
@@ -1055,7 +1054,7 @@ void chat_one()
         pthread_mutex_unlock(&mutex);
         return;
     }
-    printf("\n***********Message***********\n");
+    printf("\n-----------聊天-----------\n");
     if(rec_info[0].message[0] == '0')
         printf("暂无未读消息\n");
     else
@@ -1105,7 +1104,7 @@ void chat_many()
         pthread_mutex_unlock(&mutex);
         return;
     }
-    printf("\n***********Message***********\n");
+    printf("\n-----------聊天-----------\n");
     if(rec_info[0].message[0] == '0')
         printf("暂无消息\n");
     else
