@@ -95,7 +95,7 @@ Recordinfo *pRec = NULL;
 
 PACK Mex_Box[100];
 int sign;
-int book;
+int count;
 
 
 int main(void) {
@@ -188,17 +188,17 @@ int main(void) {
                         }
                         t = t->next;
                     }
-                    printf("log off(fd): %d\n",ev.data.fd);
+                    printf("OFFLINE(fd): %d\n",ev.data.fd);
                     epoll_ctl(epfd, EPOLL_CTL_DEL, events[i].data.fd, &ev);
                     Close(events[i].data.fd);
                     continue;
                 }
-                printf("**************\n");
+                printf("------------------\n");
                 printf("type      : %d\n", recv_t.type);
                 printf("send_name : %s\n", recv_t.data.send_name);
                 printf("recv_name : %s\n",recv_t.data.recv_name);
                 printf("mes       : %s\n", recv_t.data.mes);
-                printf("***************\n\n");
+                printf("------------------\n\n");
 
                 recv_t.data.recv_fd = events[i].data.fd;
  			    recv_pack = (PACK*)malloc(sizeof(PACK));
@@ -225,16 +225,16 @@ User *U_read()
 {
     MYSQL_RES *res = NULL;
     MYSQL_ROW row;
-    char query_str[1000];
+    char query[1000];
     int rows;
     int fields;
 
     User *pEnd, *pNew;
 
-    sprintf(query_str, "select * from user_data");
-    mysql_real_query(&mysql, query_str, strlen(query_str));
+    sprintf(query, "select * from user_data");
+    mysql_real_query(&mysql, query, strlen(query));
     res = mysql_store_result(&mysql);
-    rows = mysql_num_rows(res);
+    rows = mysql_num_rows(res);    //行数
     fields = mysql_num_fields(res);
 
     while(row = mysql_fetch_row(res))
@@ -258,14 +258,14 @@ Relation *R_read()
 {
     MYSQL_RES *res = NULL;
     MYSQL_ROW row;
-    char query_str[1000];
+    char query[1000];
     int rows;
     int fields;
 
     Relation *pEnd, *pNew;
 
-    sprintf(query_str, "select * from friends");
-    mysql_real_query(&mysql, query_str, strlen(query_str));
+    sprintf(query, "select * from friends");
+    mysql_real_query(&mysql, query, strlen(query));
     res = mysql_store_result(&mysql);
     rows = mysql_num_rows(res);
     fields = mysql_num_fields(res);
@@ -291,14 +291,14 @@ Recordinfo *RC_read()
 {
     MYSQL_RES *res = NULL;
     MYSQL_ROW row;
-    char query_str[1000];
+    char query[1000];
     int rows;
     int fields;
 
     Recordinfo *pEnd, *pNew;
 
-    sprintf(query_str, "select * from records");
-    mysql_real_query(&mysql, query_str, strlen(query_str));
+    sprintf(query, "select * from records");
+    mysql_real_query(&mysql, query, strlen(query));
     res = mysql_store_result(&mysql);
     rows = mysql_num_rows(res);
     fields = mysql_num_fields(res);
@@ -348,7 +348,6 @@ void *Menu(void *recv_pack_t)
         break;
 
     case ADD_FRI:
-        printf("add_fri\n");
         add_fri(recv_pack);
         break;
 
@@ -422,7 +421,7 @@ void *Menu(void *recv_pack_t)
     }
 }
 
-//注销
+//退出
 void Exit(PACK *recv_pack)
 {
     User *t = pHead;
@@ -446,7 +445,6 @@ void registe(PACK *recv_pack)
     int a;
     char ch[5];
     int fd;
-    printf("%d\n",fd);
     fd = recv_pack->data.send_fd;
 
     User *t = pHead;
@@ -474,7 +472,7 @@ void registe(PACK *recv_pack)
         mysql_real_query(&mysql, query_str, strlen(query_str));
         ch[0] = '1';
     }
-    else
+    else//重名
         ch[0] = '0';
     
     ch[1] = '\0';
@@ -485,10 +483,18 @@ void registe(PACK *recv_pack)
 void Insert(User *pNew)
 {
     User *t = pHead;
-    while(t && t->next != NULL)
-        t = t->next;
-    t->next = pNew;
-    pNew->next = NULL;
+    if(t==NULL)
+    {
+        t=pNew;
+        pNew->next = NULL;
+    }
+    else
+    {
+        while(t && t->next != NULL)
+            t = t->next;
+        t->next = pNew;
+        pNew->next = NULL;
+    }
 }
 
 //登陆
@@ -510,7 +516,7 @@ void login(PACK *recv_pack)
         t = t->next;
     }
 
-    if(flag == 0)
+    if(flag == 0)//不存在
         ch[0] = '0';
     else
     {
@@ -520,7 +526,7 @@ void login(PACK *recv_pack)
             t->statu_s = ONLINE;
             t->fd = recv_pack->data.send_fd;
         }
-        else 
+        else //在线
             ch[0] = '2';
     }
     ch[1] = '\0';
@@ -532,47 +538,41 @@ void login(PACK *recv_pack)
         if((ch[0] == '1') && strcmp(recv_pack->data.send_name, Mex_Box[i].data.recv_name) == 0 && (Mex_Box[i].type == CHAT_ONE))
         {
             send_more(fd, CHAT_ONE, &Mex_Box[i], "1");
-            book++;
+            count++;
         }
         //群聊
         if((ch[0] == '1') && strcmp(recv_pack->data.send_name, Mex_Box[i].data.send_name) == 0 && (Mex_Box[i].type == CHAT_MANY))
         {
             send_more(fd, CHAT_MANY, &Mex_Box[i], "2");
-            book++;
+            count++;
         }
         //加好友
         if((ch[0] == '1') && strcmp(recv_pack->data.send_name, Mex_Box[i].data.recv_name) == 0 && (Mex_Box[i].type == ADD_FRI))
         {
-            //开启线程执行离线任务
-            //pool_add(Menu, (void *)&Mex_Box[i]);  
             Menu((void *)&Mex_Box[i]);
-            //memset(&Mex_Box[i], 0, sizeof(PACK));
-            book++;
+            count++;
         }
         //加群
-        if((ch[0] == '1') && strcmp(recv_pack->data.send_name, Mex_Box[i].data.send_name) == 0 && (Mex_Box[i].type == ADD_GRP))
+        if((ch[0] == '1') && strcmp(recv_pack->data.send_name, Mex_Box[i].data.recv_name) == 0 && (Mex_Box[i].type == ADD_GRP))
         {
-            //开启线程执行离线任务
-            //pool_add(Menu, (void *)&Mex_Box[i]);
             Menu((void *)&Mex_Box[i]);  
-            //memset(&Mex_Box[i], 0, sizeof(PACK));
-            book++;
+            count++;
         }
         //设置管理员/踢人
         if((ch[0] == '1') && strcmp(recv_pack->data.send_name, Mex_Box[i].data.mes) == 0)
         {
             send_more(fd, Mex_Box[i].type, &Mex_Box[i], "6");
-            book++;
+            count++;
         }
         //发文件
         // if((ch[0] == '1') && strcmp(recv_pack->data.send_name, Mex_Box[i].data.recv_name) == 0 && strcmp(Mex_Box[i].data.mes, "13nb") == 0)
         // {
         //     send_file(&Mex_Box[i]);
-        //     book++;
+        //     count++;
         // }
     }
-    if(book == sign)
-        sign = book = 0;
+    if(count == sign)
+        sign = count = 0;
 }
 
 //查看好友列表
@@ -662,21 +662,21 @@ void add_fri(PACK *recv_pack)
     char temp[MAX_CHAR];
 
     User *t = pHead;
-    int flag_2 = 0;
+    int flag2 = 0;
     Relation *q = pStart;
-    int flag_3 = 0;
+    int flag3 = 0;
     Relation *pNew = (Relation *)malloc(sizeof(Relation));
     while(q)
     {
         if((strcmp(q->name1, recv_pack->data.recv_name) == 0 && strcmp(q->name2, recv_pack->data.send_name) == 0) || (strcmp(q->name1, recv_pack->data.send_name) == 0 && strcmp(q->name2, recv_pack->data.recv_name) == 0))
         {
-            flag_3 = 1;
+            flag3 = 1;
             break;
         }
         q = q->next;
     }
 
-    if(flag_3 == 1)
+    if(flag3 == 1)//已经是好友
     {
         ch[0] = '4';
         send_more(fd, flag, recv_pack, ch);
@@ -690,14 +690,14 @@ void add_fri(PACK *recv_pack)
         {
             if(strcmp(t->name, recv_pack->data.recv_name) == 0)
             {
-                flag_2 = 1;
+                flag2 = 1;
                 break;
             }
             t = t->next;
         }
         
         //该用户不存在
-        if(flag_2 == 0)
+        if(flag2 == 0)
         {
             ch[0] = '3';
             send_more(fd, flag, recv_pack, ch);
@@ -735,7 +735,7 @@ void add_fri(PACK *recv_pack)
             }
             else if(t->statu_s == OFFLINE)
             {
-                memcpy(&Mex_Box[sign++], recv_pack, sizeof(PACK));       
+                memcpy(&Mex_Box[sign++], recv_pack, sizeof(PACK));       //登陆
             }
         }
     }
@@ -780,7 +780,7 @@ void del_fri(PACK *recv_pack)
         q = q->next;
     }
 
-    if(flag_3 == 0)
+    if(flag_3 == 0)//不是好友
         ch[0] = '0';
     else
     {
@@ -897,7 +897,7 @@ void cre_grp(PACK *recv_pack)
 //加群
 void add_grp(PACK *recv_pack)
 {
-    char query_str[15000];
+    char query[15000];
 
     int flag = ADD_GRP;
     int fd = recv_pack->data.send_fd;
@@ -905,7 +905,7 @@ void add_grp(PACK *recv_pack)
 
     User *t = pHead;
     Relation *q = pStart;
-    int flag_3 = 0;
+    int flag2 = 0;
     Relation *pNew = (Relation *)malloc(sizeof(Relation));
     if(strcmp(recv_pack->data.mes, "y") == 0)
     {   
@@ -925,9 +925,9 @@ void add_grp(PACK *recv_pack)
         pNew->statu_s = GRP;
         Insert_R(pNew);
 
-        memset(query_str, 0, strlen(query_str));
-        sprintf(query_str, "insert into friends values('%s', '%s', %d)", recv_pack->data.recv_name, recv_pack->data.send_name, GRP);
-        mysql_real_query(&mysql, query_str, strlen(query_str));
+        memset(query, 0, strlen(query));
+        sprintf(query, "insert into friends values('%s', '%s', %d)", recv_pack->data.recv_name, recv_pack->data.send_name, GRP);
+        mysql_real_query(&mysql, query, strlen(query));
         send_more(fd, flag, recv_pack, ch);
         return;
     }
@@ -950,18 +950,20 @@ void add_grp(PACK *recv_pack)
     {
         if(strcmp(q->name2, recv_pack->data.mes) == 0 && (q->statu_s == GRP_OWN))
         {
-            flag_3 = 1;
+            flag2 = 1;
             strcpy(recv_pack->data.recv_name, q->name1);
             break;
         }
         q = q->next;
     }
 
-    if(flag_3 == 0)
+    if(flag2 == 0)//该群不存在
     {
         ch[0] = '0';
+        send_more(fd, flag, recv_pack, ch);
+        return;
     }
-    else if(flag_3 == 1)
+    else if(flag2 == 1)
     {
         t = pHead;
         while(t)
@@ -971,17 +973,20 @@ void add_grp(PACK *recv_pack)
                 ch[0] = '1';
                 fd = t->fd;
                 strcpy(recv_pack->file.mes, recv_pack->data.mes);
-                break;
+                //break;
+                send_more(fd, flag, recv_pack, ch);
+                return;
             }
             else if(strcmp(recv_pack->data.recv_name, t->name) == 0 && (t->statu_s == OFFLINE))
             {
+                //printf("offline add group\n");
                 memcpy(&Mex_Box[sign++], recv_pack, sizeof(PACK));
                 break;
-            }
+            } 
             t = t->next;
         }
     }
-    send_more(fd, flag, recv_pack, ch);
+    //send_more(fd, flag, recv_pack, ch);
 }
 
 //退群
