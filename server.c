@@ -1025,7 +1025,7 @@ void set_grp_adm(PACK *recv_pack)
 //踢人
 void kick_grp(PACK *recv_pack)
 {
-    char query_str[1000];
+    char query[1000];
 
     int flag = KICK_GRP;
     char ch[5];
@@ -1084,9 +1084,9 @@ void kick_grp(PACK *recv_pack)
                 memcpy(&Mex_Box[sign++], recv_pack, sizeof(PACK));
             t = t->next;
         }
-        memset(query_str, 0, strlen(query_str));
-        sprintf(query_str, "delete from friends where name1='%s' and name2='%s'", recv_pack->data.mes, recv_pack->data.recv_name);
-        mysql_real_query(&mysql, query_str, strlen(query_str));
+        memset(query, 0, strlen(query));
+        sprintf(query, "delete from friends where name1='%s' and name2='%s'", recv_pack->data.mes, recv_pack->data.recv_name);
+        mysql_real_query(&mysql, query, strlen(query));
     }
     else if(flag3 == 0 && flag1 == 1 && flag2 == 1 && flag4 == 1)
         ch[0] = '2';
@@ -1242,8 +1242,7 @@ void chat_one(PACK *recv_pack)
             }
             t = pHead;
             while(t){
-                if(strcmp(t->name, recv_pack->data.recv_name) == 0 && (t->statu_s != OFFLINE))
-                {
+                if(strcmp(t->name, recv_pack->data.recv_name) == 0 && (t->statu_s != OFFLINE)){
                     flag3 = 1;
                     break;
                 }
@@ -1267,7 +1266,6 @@ void chat_one(PACK *recv_pack)
             t = pHead;
             while(t){
                 if(strcmp(t->name, recv_pack->data.recv_name) == 0 && strcmp(t->chat, recv_pack->data.send_name) == 0 && (t->statu_s == ONE_CHAT)){
-                    printf("same");
                     fd = t->fd;
                     strcpy(pNew->name1, recv_pack->data.send_name);
                     strcpy(pNew->name2, recv_pack->data.recv_name);
@@ -1281,15 +1279,10 @@ void chat_one(PACK *recv_pack)
                     memset(temp, 0, MAX_CHAR);
                     strcpy(temp,recv_pack->data.recv_name);
                     strcpy(recv_pack->data.recv_name, recv_pack->data.send_name);
-                    time(&now);
-                    str = ctime(&now);
-                    str[strlen(str) - 1] = '\0';
-                    memcpy(recv_pack->data.send_name, str, strlen(str));
                     send_more(fd, flag, recv_pack, recv_pack->data.mes);
                     return;
                 }
                 else if(strcmp(t->name, recv_pack->data.recv_name) == 0 && strcmp(t->chat, recv_pack->data.send_name) != 0){
-                    printf("not same");
                     memset(query, 0, strlen(query));
                     sprintf(query, "insert into off_records values('%s', '%s', '%s')", recv_pack->data.send_name, recv_pack->data.recv_name, recv_pack->data.mes);
                     mysql_real_query(&mysql, query, strlen(query));
@@ -1456,10 +1449,6 @@ void chat_many(PACK *recv_pack)
                             bzero(temp, MAX_CHAR);
                             strcpy(temp,recv_pack->data.recv_name);
                             strcpy(recv_pack->data.recv_name, recv_pack->data.send_name);
-                            time(&now);
-                            str = ctime(&now);
-                            str[strlen(str) - 1] = '\0';
-                            memcpy(recv_pack->data.send_name, str, strlen(str));
                             send_more(fd, flag, recv_pack, recv_pack->data.mes);
                             strcpy(recv_pack->data.send_name, temp);
                             bzero(temp, MAX_CHAR);
