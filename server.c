@@ -56,14 +56,14 @@ User *U_read();                     //读取用户信息表
 Relation *R_read();                 //读取关系表
 Recordinfo *RC_read();              //读取消息记录
 void Insert(User *pNew);            //注册
-void Insert_R(Relation *pNew);      //加入关系表
-void Insert_RC(Recordinfo *pNew);   //加入聊天记录
-void Delete_R(Relation *pNew);      //删除出关系表
-void DeleteLink();                  //销毁		
-void DeleteLink_R();                //销毁		
-void DeleteLink_RC();               //销毁		
-void *Menu(void *recv_pack_t);      //处理函数
-void Exit(PACK *recv_pack);         //注销
+void Insert_R(Relation *pNew);      
+void Insert_RC(Recordinfo *pNew);   
+void Delete_R(Relation *pNew);      
+void DeleteLink();                  	
+void DeleteLink_R();                	
+void DeleteLink_RC();               	
+void *Menu(void *recv_pack_t);      
+void Exit(PACK *recv_pack);        
 void registe(PACK *recv_pack);      //注册
 void login(PACK *recv_pack);        //登陆
 void check_fri(PACK *recv_pack);    //查看好友列表
@@ -71,10 +71,10 @@ void get_fri_sta(PACK *recv_pack);  //获取好友状态
 void add_fri(PACK *recv_pack);      //添加好友
 void del_fri(PACK *recv_pack);      //删除好友
 void shi_fri(PACK *recv_pack);      //屏蔽好友
-void cre_grp(PACK *recv_pack);      //创建群
-void add_grp(PACK *recv_pack);      //加群
-void out_grp(PACK *recv_pack);      //退群
-void del_grp(PACK *recv_pack);      //解散群
+void cre_grp(PACK *recv_pack);      
+void add_grp(PACK *recv_pack);      
+void out_grp(PACK *recv_pack);      
+void del_grp(PACK *recv_pack);      
 void set_grp_adm(PACK *recv_pack);  //设置管理员
 void kick_grp(PACK *recv_pack);     //踢人
 void check_grp(PACK *recv_pack);    //查看群列表       
@@ -953,7 +953,7 @@ void del_grp(PACK *recv_pack)
 //设置管理员
 void set_grp_adm(PACK *recv_pack)
 {
-    char query_str[1000];
+    char query[1000];
 
     int flag = SET_GRP_ADM;
     char ch[5];
@@ -1009,9 +1009,9 @@ void set_grp_adm(PACK *recv_pack)
                 memcpy(&Mex_Box[sign++], recv_pack, sizeof(PACK));
             t = t->next;
         }
-        memset(query_str, 0, strlen(query_str));
-        sprintf(query_str, "update friends set status=%d where name1='%s' and name2='%s'", GRP_ADM, recv_pack->data.mes, recv_pack->data.recv_name);
-        mysql_real_query(&mysql, query_str, strlen(query_str));
+        memset(query, 0, strlen(query));
+        sprintf(query, "update friends set status=%d where name1='%s' and name2='%s'", GRP_ADM, recv_pack->data.mes, recv_pack->data.recv_name);
+        mysql_real_query(&mysql, query, strlen(query));
     }
     else if(flag3 == 0 && flag2 == 1 && flag1 == 1)
         ch[0] = '2';
@@ -1044,7 +1044,6 @@ void kick_grp(PACK *recv_pack)
         }
         q = q->next;
     }
-
     q = pStart;
     while(q){
         if(strcmp(q->name2, recv_pack->data.recv_name) == 0 && strcmp(q->name1, recv_pack->data.mes) == 0){
@@ -1053,7 +1052,6 @@ void kick_grp(PACK *recv_pack)
         }
         q = q->next;
     }
-
     q = pStart;
     while(q){
         if(strcmp(q->name1, recv_pack->data.send_name) == 0 && strcmp(q->name2, recv_pack->data.recv_name) == 0 && (q->statu_s == GRP_OWN || q->statu_s == GRP_ADM)){
@@ -1062,16 +1060,14 @@ void kick_grp(PACK *recv_pack)
         }
         q = q->next;
     }
-    
     q = pStart;
     while(q){
-        if(strcmp(q->name1, recv_pack->data.mes) == 0 && (q->statu_s == GRP)){
+        if(strcmp(q->name1, recv_pack->data.mes) == 0 && (q->statu_s == (GRP))){
             flag4 = 1;
             break;
         }
         q = q->next;
     }
-
     if(flag3 == 1 && flag1 == 1 && flag2 == 1 && flag4 == 1){
         ch[0] = '1';
         Delete_R(q);
@@ -1146,14 +1142,11 @@ void chat_one(PACK *recv_pack)
     char ch[5];
     int fd = recv_pack->data.send_fd;
     char temp[MAX_CHAR];
-    time_t now;
-    char *str;
     MYSQL_RES *res = NULL;
     MYSQL_ROW row;
     char query[1500];
     int rows;
     int i = 0;
-    
     User *t = pHead;
     Relation *q = pStart;
     int flag2 = 0;
@@ -1183,7 +1176,6 @@ void chat_one(PACK *recv_pack)
         }
         q = q->next;
     }
-
     t = pHead;
     while(t){
         if(strcmp(t->name, recv_pack->data.recv_name) == 0){
@@ -1192,7 +1184,6 @@ void chat_one(PACK *recv_pack)
         }
         t = t->next;
     }
-
     if(flag2 == 0){//用户不存在
         ch[0] = '0';
         send_more(fd, flag, recv_pack, ch);
@@ -1319,24 +1310,18 @@ void chat_many(PACK *recv_pack)
     char ch[5];
     int fd = recv_pack->data.send_fd;
     char temp[MAX_CHAR];
-    time_t now;
-    char *str;
-    
     MYSQL_RES *res = NULL;
     MYSQL_ROW row;
     char query[1500];
     int rows;
-    int fields;
     PACK recv_t;
     recv_t.type = flag;
     int i = 0,j = 0;
-
     User *t = pHead;
     Relation *q = pStart;
     int flag2 = 0;
 
     Recordinfo *pNew = (Recordinfo *)malloc(sizeof(Recordinfo));
-
     if(strcmp(recv_pack->data.mes, "q") == 0){
         while(t){
             if(strcmp(t->name, recv_pack->data.send_name) == 0){
@@ -1348,7 +1333,6 @@ void chat_many(PACK *recv_pack)
             t = t->next;
         }
     }
-
     while(q){
         if(strcmp(q->name2, recv_pack->data.recv_name) == 0 && (q->statu_s >= GRP)){
             flag2 = 1;
@@ -1356,7 +1340,7 @@ void chat_many(PACK *recv_pack)
         }
         q = q->next;
     }
-    if(flag2 == 0){
+    if(flag2 == 0){//不是群成员
         ch[0] = '0';
         send_more(fd, flag, recv_pack, ch);
         free(pNew);
@@ -1364,13 +1348,12 @@ void chat_many(PACK *recv_pack)
         return;
     }
     else{
-        if(strcmp(recv_pack->data.mes, "1") == 0){
+        if(strcmp(recv_pack->data.mes, "1") == 0){//加入群聊
             memset(query, 0, strlen(query));
             sprintf(query, "select * from records where name2='%s'", recv_pack->data.recv_name);
             mysql_real_query(&mysql, query, strlen(query));
             res = mysql_store_result(&mysql);
             rows = mysql_num_rows(res);
-            fields = mysql_num_fields(res);
             if(rows != 0){
                 while(row = mysql_fetch_row(res)){
                     if(rows <= 30){
@@ -1549,7 +1532,6 @@ void send_more(int fd, int type, PACK *recv_pack, char *mes)
     char temp[MAX_CHAR];
     memcpy(&pack_send, recv_pack, sizeof(PACK));
     strcpy(temp,pack_send.data.recv_name);
-    
     pack_send.type = type;
     strcpy(pack_send.data.recv_name, pack_send.data.send_name);
     strcpy(pack_send.data.send_name, temp);
