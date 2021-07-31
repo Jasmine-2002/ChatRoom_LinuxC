@@ -33,8 +33,8 @@
 #define CHAT_MANY 17
 #define CHECK_MES_FRI 18
 #define CHECK_MES_GRP 19
-// #define RECV_FILE 20
-// #define SEND_FILE 21
+#define RECV_FILE 20
+#define SEND_FILE 21
 
 #define PASSIVE 0
 #define ACTIVE 1
@@ -322,7 +322,7 @@ void *get_back()
                     pthread_cond_signal(&cond);           
                 }
                 else
-                    printf("\n%s\n\t\t%s: %s\n", recv_pack.data.recv_name, recv_pack.data.send_name, recv_pack.data.mes);
+                    printf("\n%s: %s\n", recv_pack.data.send_name, recv_pack.data.mes);
                 break;
             case CHAT_MANY:
                 flag = recv_pack.data.mes[0] - '0';
@@ -336,14 +336,17 @@ void *get_back()
                     sprintf(mes_box[sign], "群%s有人进入群聊", recv_pack.data.send_name);
                     sign++;
                 }
-                else if(flag == 2)
-                    printf("\n群%s有新消息\n",recv_pack.data.send_name);
+                else if(flag == 2){
+                    sign_ive[sign] = ACTIVE;
+                    sprintf(mes_box[sign],"\n群%s有新消息\n",recv_pack.data.send_name);
+                    sign++;
+                }
                 else if(flag == 6){
                     memcpy(&rec_info, &recv_pack.rec_info, sizeof(rec_info));
                     pthread_cond_signal(&cond);           
                 }
                 else
-                    printf("\n%s\n\t\t%s: %s\n", recv_pack.data.recv_name, recv_pack.data.send_name, recv_pack.data.mes);
+                    printf("\n%s: %s\n", recv_pack.data.send_name, recv_pack.data.mes);
                 break;
             case CHECK_MES_FRI:
                 flag = recv_pack.data.mes[0] - '0';
@@ -381,8 +384,9 @@ void *get_back()
                 }
                 pthread_cond_signal(&cond);
                 break;
-            // case SEND_FILE:
-            //     break;
+            case SEND_FILE:
+
+                break;
 
             default:
                 break;
@@ -986,7 +990,6 @@ void chat_one()
     {
         memset(mes, 0, sizeof(mes));
         printf("%s: ", user);
-        //scanf("%s", mes);
         scanf("%[^\n]", mes);
         getchar();
         send_pack(flag, user, chat_name, mes);
@@ -1013,7 +1016,7 @@ void chat_many()
     send_pack(flag, user, chat_name, mes);
     
     pthread_cond_wait(&cond, &mutex);
-    if(signal == 1)
+    if(signal == 1)//群不存在
     {
         signal = 0;
         pthread_mutex_unlock(&mutex);
