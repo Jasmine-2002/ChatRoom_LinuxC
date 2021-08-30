@@ -33,8 +33,8 @@
 #define CHAT_MANY 17
 #define CHECK_MES_FRI 18
 #define CHECK_MES_GRP 19
-#define RECV_FILE 20
-#define SEND_FILE 21
+#define SEND_FILE 20
+#define RECV_FILE 21
 
 #define PASSIVE 0
 #define ACTIVE 1
@@ -69,9 +69,9 @@ void chat_many();       //群聊
 void check_mes_fri();   //查看与好友聊天记录
 void check_mes_grp();   //查看群组聊天记录
 void send_pack(int type, char *send_name, char *recv_name, char *mes);
-// void send_file();       //发送文件
-// void recv_file(PACK *recv_pack);       //接收文件
-// int get_file_size(char *send_file_name); //得到文件大小
+void send_file();       //发送文件
+void recv_file(PACK *recv_pack);       //接收文件
+int get_file_size(char *send_file_name); //得到文件大小
 
 
 
@@ -91,6 +91,7 @@ char mes_box[100][MAX_CHAR];//消息记录
 int mes_box_inc[100];//加群/好友
 int sign;
 int sign_ive[100];//消息状态
+char mes_file[MAX_CHAR * 3];
 
 pthread_mutex_t mutex;
 pthread_cond_t cond;
@@ -134,8 +135,9 @@ void *get_back()
     {
         int flag;
         int i = 0;
+        int fd;
         PACK recv_pack;
-        int ret = recv(confd, &recv_pack, sizeof(PACK), 0);
+        int ret = recv(confd, &recv_pack, sizeof(PACK), MSG_WAITALL);
         if(ret < 0)
             my_err("recv", __LINE__);
         switch(recv_pack.type)
@@ -333,7 +335,7 @@ void *get_back()
                 }
                 else if(flag == 1){
                     sign_ive[sign] = ACTIVE;
-                    sprintf(mes_box[sign], "群%s有人进入群聊", recv_pack.data.send_name);
+                    sprintf(mes_box[sign], "\n群%s有人进入群聊\n", recv_pack.data.send_name);
                     sign++;
                 }
                 else if(flag == 2){
@@ -346,7 +348,7 @@ void *get_back()
                     pthread_cond_signal(&cond);           
                 }
                 else
-                    printf("\n%s: %s\n", recv_pack.data.send_name, recv_pack.data.mes);
+                    printf("%s: %s\n", recv_pack.data.send_name, recv_pack.data.mes);
                 break;
             case CHECK_MES_FRI:
                 flag = recv_pack.data.mes[0] - '0';
@@ -385,7 +387,44 @@ void *get_back()
                 pthread_cond_signal(&cond);
                 break;
             case SEND_FILE:
-
+                flag = recv_pack.data.mes[0] - '0';
+                if(flag == 0){
+                    printf("该用户不是你的好友!\n");
+                    signal = 1;
+                    pthread_cond_signal(&cond);
+                }
+                if(flag == 1)
+                    pthread_cond_signal(&cond);
+                break;
+            case RECV_FILE:
+                if(strcmp(recv_pack.data.mes, "5") == 0)
+                {
+                    sign_ive[sign] = PASSIVE;
+                    sprintf(name[sign], "%s", recv_pack.data.send_name);
+                    mes_box_inc[sign] = RECV_FILE;
+                    sprintf(mes_box[sign], "%s给你发来了一个文件,是否接收(y/n): ", recv_pack.data.send_name);
+                    sign++;
+                }
+                else if(strcmp(recv_pack.data.mes, "4") == 0)
+                {
+                    memset(mes_file, 0, sizeof(mes_file));
+                    mes_file[0] = '_';
+                    strcat(mes_file, recv_pack.data.send_name);
+                    fd = creat(mes_file, S_IRWXU);
+                    close(fd);
+                }
+                else if(strcmp(recv_pack.data.mes, "0") == 0)
+                    printf("\n%s拒绝接收文件!\n", recv_pack.data.recv_name);
+                else if(strcmp(recv_pack.data.mes, "1") == 0)
+                    printf("\n%s确认接收文件!\n", recv_pack.data.recv_name);
+                else if(strcmp(recv_pack.data.mes, "2") == 0)
+                    printf("%s接收完毕\n", recv_pack.data.recv_name);
+                else if(strcmp(recv_pack.data.mes, "3") == 0)
+                    printf("接收完毕!\n");
+                else 
+                {
+                    recv_file(&recv_pack);
+                }
                 break;
 
             default:
@@ -451,8 +490,8 @@ void registe()
     
     send_pack(flag, registe_name, "server", registe_passwd);
     printf("请稍等...\n");
-    sleep(3);
-    if(recv(confd, &recv_registe, sizeof(PACK), 0) < 0)
+    sleep(1);
+    if(recv(confd, &recv_registe, sizeof(PACK), MSG_WAITALL) < 0)
         my_err("recv", __LINE__);
     registe_flag = recv_registe.data.mes[0] - '0';
 
@@ -499,11 +538,10 @@ int login()
 	
     system("clear");
     send_pack(flag, login_name, "server", login_passwd);
-    if(recv(confd, &recv_login, sizeof(PACK), 0) < 0)
+    if(recv(confd, &recv_login, sizeof(PACK), MSG_WAITALL) < 0)
         my_err("recv", __LINE__);
     
     login_flag = recv_login.data.mes[0] - '0';
-
     if(login_flag == 1)
     {
         printf("登陆成功!\n");
@@ -548,9 +586,9 @@ void Menu()
         case 2:
             Menu_groups();
             break;          
-        // case 3:
-        //     send_file();
-        //     break;
+        case 3:
+            send_file();
+            break;
         case 4:
             Menu_chat();
             break;
@@ -1040,6 +1078,90 @@ void chat_many()
     }while(strcmp(mes, "q") != 0);
 
     pthread_mutex_unlock(&mutex);
+}
+
+
+ //得到文件大小
+int get_file_size(char *send_file_name)
+{
+    FILE *fd;
+    int len;
+    if((fd = fopen(send_file_name,"rb")) == NULL){
+        printf("\n该文件不存在!\n");
+        return -1;
+    }
+    fseek(fd, 0, SEEK_END);
+    len=ftell(fd);
+    fclose(fd);
+    return len;
+}
+
+
+//发文件
+void send_file()
+{
+    int flag = SEND_FILE;
+    int fd;
+    int length = 0;
+    int sum, n, m = 0;
+    char file_name[MAX_CHAR];
+    char send_file_name[MAX_CHAR];
+    PACK send_file;
+    send_file.type = flag;
+    printf("你想要给谁发送文件: ");
+    scanf("%s", file_name);
+    printf("你想要发送的文件名称：");
+    scanf("%s",send_file_name);
+    sum = get_file_size(send_file_name);
+    if(sum == -1){
+        pthread_mutex_unlock(&mutex);
+        return;
+    } 
+    printf("总大小：%d\n", sum);
+    send_pack(flag, send_file_name, file_name, "send");
+    pthread_cond_wait(&cond, &mutex);
+    if(signal == 1){
+        signal = 0;
+        pthread_mutex_unlock(&mutex);
+        return;
+    }
+
+    strcpy(send_file.data.send_name, user);
+    strcpy(send_file.data.recv_name, file_name);
+    //printf("总大小：%d\n", sum);
+    fd = open(send_file_name, O_RDONLY);
+    if(fd == -1)
+        printf("没有找到文件：%s\n", send_file_name);
+    else{
+        while((length = read(fd, send_file.file.mes, MAX_FILE - 1)) > 0){
+            send_file.file.size = length;    
+            if(send(confd, &send_file, sizeof(PACK), 0) < 0)
+                my_err("send",__LINE__);
+            
+            bzero(send_file.file.mes, MAX_FILE);
+            printf("发送中...\n");
+        }
+    }
+    printf("发送成功!\n");
+    send_pack(flag, user, file_name, "success");
+    close(fd);
+}
+
+
+//接收文件
+void recv_file(PACK *recv_pack)
+{
+    int fd;
+    int length;
+    char mes[MAX_CHAR * 3 + 1];
+    bzero(mes, MAX_CHAR * 3 + 1);
+    fd = open(mes_file, O_WRONLY | O_APPEND);
+    if(fd == -1)
+        printf("未找到文件%s！\n", mes_file);
+    if(write(fd, recv_pack->file.mes, recv_pack->file.size) < 0)
+        my_err("write", __LINE__);
+    printf("\n接收中...\n");
+    close(fd);
 }
 
 
