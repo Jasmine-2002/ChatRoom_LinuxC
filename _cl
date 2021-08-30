@@ -13,16 +13,6 @@
 #define MAX_CHAR 100
 #define FRI_MAX 100
 #define MAX_FILE 10000
-#define MAX_THREAD_NUM 10
-
-
-typedef struct _file
-{
-    char file_name[MAX_THREAD_NUM][MAX_CHAR];
-    char file_send_name[MAX_THREAD_NUM][MAX_CHAR];
-    int sign_file;
-}File;
-File file;
 
 
 typedef struct _user

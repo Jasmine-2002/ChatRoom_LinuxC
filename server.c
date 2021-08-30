@@ -81,8 +81,8 @@ void check_grp(PACK *recv_pack);    //查看群列表
 void check_mem_grp(PACK *recv_pack);//查看群中成员
 void chat_one(PACK *recv_pack);     //私聊
 void chat_many(PACK *recv_pack);    //群聊
-// void recv_file(PACK *recv_pack);    //接收文件
-// void send_file(PACK *recv_pack);    //发送文件
+void recv_file(PACK *recv_pack);    //接收文件
+void send_file(PACK *recv_pack);    //发送文件
 void check_mes_fri(PACK *recv_pack);//查看与好友聊天记录
 void check_mes_grp(PACK *recv_pack);//查看群组聊天记录
 void send_more(int fd, int flag, PACK *recv_pack, char *mes);
@@ -125,7 +125,7 @@ int main(void) {
     }
     printf("Loading...\n");
 
-    sockfd = Socket(AF_INET, SOCK_STREAM, 0);
+    sockfd = Socket(AF_INET,SOCK_STREAM,0);
 
     bzero(&serveraddr,sizeof(serveraddr));
 
@@ -360,14 +360,12 @@ void *Menu(void *recv_pack_t)
     case CHECK_MES_GRP:
         check_mes_grp(recv_pack);
         break;
-    /*
     case RECV_FILE:
         recv_file(recv_pack);
         break;
-    */
-    // case SEND_FILE:
-    //     send_file(recv_pack);
-    //     break;
+    case SEND_FILE:
+        send_file(recv_pack);
+        break;
     default:
         break;
     }
@@ -501,11 +499,11 @@ void login(PACK *recv_pack)
             count++;
         }
         //发文件
-        // if((ch[0] == '1') && strcmp(recv_pack->data.send_name, Mex_Box[i].data.recv_name) == 0 && strcmp(Mex_Box[i].data.mes, "13nb") == 0)
-        // {
-        //     send_file(&Mex_Box[i]);
-        //     count++;
-        // }
+        if((ch[0] == '1') && strcmp(recv_pack->data.send_name, Mex_Box[i].data.recv_name) == 0 && strcmp(Mex_Box[i].data.mes, "success") == 0)
+        {
+            send_file(&Mex_Box[i]);
+            count++;
+        }
     }
     if(count == sign)
         sign = count = 0;
@@ -1523,6 +1521,149 @@ void check_mes_grp(PACK *recv_pack)
     recv_pack->rec_info[i].message[0] = '0';
     
     send_more(fd, flag, recv_pack, ch);
+}
+
+
+//接收文件
+void recv_file(PACK *recv_pack)
+{
+    int flag = RECV_FILE;
+    int fd = recv_pack->data.send_fd;
+    int length = 0;
+    int i = 0;
+    char mes[MAX_CHAR * 3 + 1];
+    char *name;
+    bzero(mes, MAX_CHAR * 3 + 1);
+    int fp;
+    User *t = pHead;
+    int flag2 = 0;
+    if(strcmp(recv_pack->data.mes,"send") == 0){
+        while(t){
+            if(strcmp(t->name, recv_pack->data.recv_name) == 0){
+                flag2 = 1;
+                break;
+            }
+            t = t->next;
+        }
+        if(flag2 == 1){
+            file.file_name[file.sign_file][0] = '_';
+            for(i = 0; i < strlen(recv_pack->data.send_name); i++){
+                if(recv_pack->data.send_name[i] == '/'){
+                    name = strrchr(recv_pack->data.send_name, '/');
+                    name++;
+                    strcat(file.file_name[file.sign_file],name);
+                    break;
+                }
+            }
+            if(i == strlen(recv_pack->data.send_name))
+                strcat(file.file_name[file.sign_file],recv_pack->data.send_name);
+
+            strcpy(file.file_send_name[file.sign_file], recv_pack->data.recv_name);
+            fp = creat(file.file_name[file.sign_file], S_IRWXU);
+            file.sign_file++;
+            close(fp);
+            send_more(fd, flag, recv_pack, "1");
+        }
+        else 
+            send_more(fd, flag, recv_pack, "0");
+    }
+    else if(strcmp(recv_pack->data.mes, "success") == 0){
+        while(t){
+            if(strcmp(t->name, recv_pack->data.recv_name) == 0 && (t->statu_s != OFFLINE)){
+                flag2 = 1;
+                break;
+            }
+            t = t->next;
+        }
+        if(flag2 == 1)
+            send_file(recv_pack);
+        else if(flag2 == 0)
+            memcpy(&Mex_Box[sign++], recv_pack, sizeof(PACK));    
+    }
+    else{
+        for(i = 0; i < file.sign_file; i++){
+            if(strcmp(recv_pack->data.recv_name, file.file_send_name[i]) == 0){
+                fp = open(file.file_name[i], O_WRONLY | O_APPEND);
+                break;
+            }
+        }
+        if(write(fp, recv_pack->file.mes, recv_pack->file.size) < 0)
+            my_err("write", __LINE__);
+        close(fp);
+        //send_more(fd, flag, recv_pack, "");
+    }
+}
+
+
+//发送文件
+void send_file(PACK *recv_pack)
+{
+    int flag = SEND_FILE;
+    int fd = recv_pack->data.send_fd;
+    int fd2;
+    int fp;
+    int length = 0;
+    PACK send_file;
+    send_file.type = flag;
+
+    char temp[MAX_CHAR];
+    User *t = pHead;
+    int flag_2 = 0;
+    int i = 0;
+    while(t)
+    {
+        if(strcmp(t->name, recv_pack->data.recv_name) == 0)
+        {
+            fd2 = t->fd;
+            break;
+        }
+        t = t->next;
+    }
+
+    if(strcmp(recv_pack->data.mes, "success") == 0)
+    {
+        strcpy(temp,recv_pack->data.recv_name);
+        strcpy(recv_pack->data.recv_name, recv_pack->data.send_name);
+        strcpy(recv_pack->data.send_name, temp);
+        send_more(fd2, flag, recv_pack, "5");
+    }
+    else if(recv_pack->data.mes[0] == 'y')
+    {
+        for(i = 0; i < file.sign_file; i++)
+            if(strcmp(file.file_send_name[i], recv_pack->data.send_name) == 0)
+                break;
+        send_more(fd2, flag, recv_pack, "1");
+        strcpy(recv_pack->data.recv_name, file.file_name[i]);
+        send_more(fd, flag, recv_pack, "4");
+
+        strcpy(send_file.data.send_name, recv_pack->data.recv_name);
+        strcpy(send_file.data.recv_name, recv_pack->data.send_name);
+        fp = open(file.file_name[i], O_RDONLY);
+        if(fp == -1)
+            printf("未找到文件%s！\n", file.file_name[i]);
+        while((length = read(fp, send_file.file.mes, MAX_FILE - 1)) > 0)
+        {
+            send_file.file.size = length;
+            if(send(fd, &send_file, sizeof(PACK), 0) < 0)
+                my_err("send",__LINE__);
+            bzero(send_file.file.mes, MAX_FILE);
+        }
+        printf("发送成功!\n");
+        send_more(fd, flag, recv_pack, "3");
+        send_more(fd2, flag, recv_pack, "2");
+        remove(file.file_name[i]);
+        file.file_send_name[i][0] = '\0';
+        close(fp);
+    }
+    else if(recv_pack->data.mes[0] == 'n')
+    {
+        send_more(fd2, flag, recv_pack, "0");
+        for(i = 0; i < file.sign_file; i++)
+            if(strcmp(file.file_send_name[i], recv_pack->data.send_name) == 0)
+                break;
+        remove(file.file_name[i]);
+        file.file_send_name[i][0] = '\0';
+    }
 }
 
 
